@@ -1,0 +1,23 @@
+html, body{
+    background: linear-gradient( rgb(121, 230, 255), rgb(188, 255, 206));
+    background-repeat: no-repeat;
+    margin: 0;
+    height: 100%;
+}
+
+#ovinger{
+
+}
+
+td, th {
+  border: 1px solid black;
+}
+
+.topCol{
+    background-color: rgb(171, 166, 166);
+     display: inline-block;
+
+}
+.botCol{
+    background-color: lightgray;
+}

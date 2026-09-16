@@ -1,0 +1,93 @@
+
+
+#intro{
+    border-style: solid;
+    border-color: rgb(236, 225, 11);
+    border-radius: 15px;
+    padding: 10px;
+    display: inline-block;
+    background-color: greenyellow;
+}
+
+
+
+#vekke{
+    color: rgb(0, 0, 0);
+    background-color: rgb(73, 248, 105);
+}
+
+#bil{
+    color: rgb(1, 52, 6);
+    background-color:tomato;
+}
+
+#stov{
+    color: blueviolet;
+    background-color: blanchedalmond;
+}
+
+#kontaktOpningBox{
+    border-style: solid;
+    border-width: 5px;
+    border-color: blue;
+    display: inline;
+    padding: 10px;
+    box-sizing: border-box;
+    float: right;
+    position: sticky;
+    top: 20px;
+    margin: 25px;
+    background-color: azure;
+}
+
+.box {
+    border-style: solid;
+    border-color: rgb(236, 225, 11);
+    padding: 10px;
+    border-width: 5px;
+    box-sizing: border-box;
+     display: inline-block;
+     margin: 20px;
+}
+
+.maskin {
+    height: 300px;
+    width: 300px;
+}
+
+body {
+    background: linear-gradient( rgb(121, 230, 255), rgb(188, 255, 206));
+    background-repeat: no-repeat;
+}
+
+p {
+    font-size: 16px;
+}
+
+h1 {
+   font-weight: bold;
+   font-style: italic; 
+}
+
+
+td, th {
+  border: 1px solid black;
+}
+
+.topCol{
+    background-color: gray;
+}
+.botCol{
+    background-color: lightgray;
+}
+
+#reviews{
+    background-color: darkcyan;
+    border-radius: 5px;
+    border-color: blueviolet;
+    border-style: dashed;
+    border-radius: 5%;
+    display: inline-block;
+    padding: 10px;
+
+}
