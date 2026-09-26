@@ -44,8 +44,14 @@ class onBox extends box {
         this.defaultPower = true
         //basePower is a constant.
         this.basePower = true
+    } 
+}
+
+class inputBox extends box {
+    constructor(x, y) {
+        super(x, y)
+        this.leadPower = true
     }
-    
 }
 
 class lamp extends box {
@@ -169,6 +175,9 @@ function updateAllPower(simulation) {
         for (let o of onBoxes) {
             updatePower(o, simulation)
         }
+        for (let i of inputBoxes) {
+            updatePower(i, simulation)
+        }
 
         for (let n of notGates) {
             updatePower(n.inBoxes[0], simulation)
@@ -291,9 +300,10 @@ function simulateRun() {
 let spawers = []
 
 spawers.push(new spawner(100, 200, "onBox"))
-spawers.push(new spawner(200, 200, "lamp"))
-spawers.push(new spawner(300, 200, "notGate"))
-spawers.push(new spawner(400, 200, "orGate"))
+spawers.push(new spawner(200, 200, "input"))
+spawers.push(new spawner(300, 200, "lamp"))
+spawers.push(new spawner(400, 200, "notGate"))
+spawers.push(new spawner(500, 200, "orGate"))
 
 
 let currentbox = {
@@ -305,6 +315,7 @@ let currentbox = {
 let onBoxes = []
 let lamps = []
 let boxes = []
+let inputBoxes = []
 let wires = []
 let notGates = []
 let orGates = []
@@ -330,6 +341,10 @@ function draw() {
     for (let b of onBoxes) {
         ctx.fillStyle = "pink";
         ctx.fillRect(b.x, b.y, tileSize, tileSize);
+    }
+    for (let i of inputBoxes) {
+        ctx.fillStyle = "green";
+        ctx.fillRect(i.x, i.y, tileSize, tileSize);
     }
 
     for (let l of lamps) {
@@ -382,14 +397,24 @@ let firstSelectedBox = null;
 let secondSelectedBox = null;
 
 
-function checkIfClicked(boxX, boxY, e) {
-    return (e.button === 0 && e.offsetX > boxX && e.offsetX < boxX+tileSize &&
-        e.offsetY > boxY && e.offsetY < boxY+tileSize)
+function checkIfClicked(boxX, boxY, e, leftClick) {
+    if (e.offsetX > boxX && e.offsetX < boxX+tileSize &&
+        e.offsetY > boxY && e.offsetY < boxY+tileSize) {
+            if (e.button === 0 && leftClick) {
+                console.log("leftClick")
+                return true
+            } else if (e.button === 2 && !leftClick) {
+                console.log("RIGHTT")
+                return true
+            } else {
+                return false
+            }
+        }
 }
 
-function checkAnyBlockClicked(e) {
+function checkAnyBlockClicked(e, leftClick) {
     for(let b of boxes) {
-        if(checkIfClicked(b.x, b.y, e)) {
+        if(checkIfClicked(b.x, b.y, e, leftClick)) {
             return b;
         }
     }
@@ -411,35 +436,52 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+let deleteBox;
+
 document.addEventListener('mousedown', (e) => {
     mouseX = e.offsetX
     mouseY = e.offsetY
+    console.log(e.button)
     if (editMode) { 
-        let selectedBox = checkAnyBlockClicked(e)
+        let selectedBox = checkAnyBlockClicked(e, true)
         if (selectedBox !== null) {
-            if (selectedBox.leadPower) {
-                selectedOutputs.push(selectedBox)
+            if (!selectedBox.leadPower || selectedBox instanceof inputBox) {
+                selectedInputs.push(selectedBox)
+                console.log("ggs")
             }
             else {
-                selectedInputs.push(selectedBox)
+                selectedOutputs.push(selectedBox)
             }
         }
     } else {
         //OnBox 
         for (s of spawers) {
-            if(checkIfClicked(s.x, s.y, e)) {
+            if(checkIfClicked(s.x, s.y, e, true)) {
                 isDragging = true
                 draggingItem = s
                 draw()
             }
         }
 
-        firstSelectedBox = checkAnyBlockClicked(e);
+        firstSelectedBox = checkAnyBlockClicked(e, true);
         console.log(firstSelectedBox)
         if (firstSelectedBox !== null) {
             isDragging = true;
             draggingItem = 'w';
             draw();
+        }
+        deleteBox = checkAnyBlockClicked(e, false)
+        if (deleteBox !== null) {
+            if (deleteBox instanceof onBox) {
+                for(let b of deleteBox.connectedBoxes) {
+                    if (b.connectedBoxes === deleteBox) {
+                        //emm venter med mer kode 
+
+                    }
+                }
+                onBoxes = onBoxes.filter(obj => obj !== deleteBox);
+                console.log("clear")
+            }
         }
     }
 });
@@ -451,7 +493,6 @@ document.addEventListener('mousedown', (e) => {
             currentbox.y = mouseY
             draw()
         }
-
 });
 
 document.addEventListener('mouseup', (e) => {
@@ -461,7 +502,7 @@ document.addEventListener('mouseup', (e) => {
         isDragging = false
         console.log(draggingItem);
         if (draggingItem === 'w') {
-              secondSelectedBox = checkAnyBlockClicked(e);
+              secondSelectedBox = checkAnyBlockClicked(e, true);
                 if(secondSelectedBox !== null && secondSelectedBox !== firstSelectedBox) {
                     wires.push(new wire(firstSelectedBox, secondSelectedBox))
                     console.log("WIREE")
@@ -473,6 +514,9 @@ document.addEventListener('mouseup', (e) => {
         switch (draggingItem.name) {
             case "onBox":
                 onBoxes.push(new onBox(mouseX, mouseY));
+                break;
+            case "input":
+                inputBoxes.push(new inputBox(mouseX, mouseY))
                 break;
             case 'lamp':
                 lamps.push(new lamp(mouseX, mouseY));
