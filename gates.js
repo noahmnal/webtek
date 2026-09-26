@@ -56,6 +56,7 @@ class lamp extends box {
 }
 
 class notGate extends gates {
+    static array = [[1], [0]]
     constructor(x, y) {
         super(x, y)
         this.inBoxes.push(new box(x, y))
@@ -67,6 +68,7 @@ class notGate extends gates {
 }
 
 class orGate extends gates {
+    static array = [[0], [1], [1], [1] ]
     constructor(x, y) {
         super(x, y)
         this.inBoxes.push(new box(x, y))
@@ -74,6 +76,28 @@ class orGate extends gates {
         this.outBoxes.push(new box(x+tileSize, y-tileSize))
         this.outBoxes[0].leadPower = true;
     }
+}
+
+class costumGate extends gates {
+    constructor(x, y, inPorts, outPorts, logic, name) {
+        super(x, y)
+        for (let i = 0; i < inPorts; i++) {
+            this.inBoxes.push(new box(x+i*2*tileSize, y))
+        }
+        for (let i = 0; i < outPorts; i++) {
+            this.outBoxes.push(new box(x+i*2*tileSize, y-tileSize))
+        }
+        this.array = logic
+        this.name = name
+
+        for (let b = 0; b < this.outBoxes.length; b++) {
+            this.outBoxes[b].leadPower = true
+            if (this.array[0][b] == 1) {
+                this.outBoxes[b].defaultPower = true
+            }
+        }
+    }
+    
 }
  
 class wire {
@@ -85,6 +109,27 @@ class wire {
         this.toBox = toBox;
         fromBox.connectedBoxes.push(toBox);
         toBox.connectedBoxes.push(fromBox);
+    }
+}
+
+class spawner {
+    constructor(x, y, name) {
+        this.x = x
+        this.y = y
+        this.name = name
+    }
+}
+
+class costumSpawner extends spawner {
+    static nr = 0
+    constructor(x, y, name, inPorts, outPorts, logic) {
+        super(x, y, name)
+        costumSpawner.nr += 1
+        this.inPorts = inPorts
+        this.outPorts = outPorts
+        this.array = logic
+        this.number = costumSpawner.nr
+
     }
 }
 
@@ -127,7 +172,8 @@ function updateAllPower(simulation) {
 
         for (let n of notGates) {
             updatePower(n.inBoxes[0], simulation)
-            let a = analyseOutPut(createInputArray(n), notArray)
+            console.log(notGate.array)
+            let a = analyseOutPut(createInputArray(n), notGate.array)
                 if(a[0] == 1) {
                     n.outBoxes[0].hasPower = true
                 } else {
@@ -138,13 +184,28 @@ function updateAllPower(simulation) {
         for(let o of orGates) {
             updatePower(o.inBoxes[0], simulation)
             updatePower(o.inBoxes[1], simulation)
-            let a = analyseOutPut(createInputArray(o), orArray)
+            let a = analyseOutPut(createInputArray(o), orGate.array)
             if(a[0] == 1) {
                 o.outBoxes[0].hasPower = true
             }
             else {
                 o.outBoxes[0].hasPower = false
             }
+        }
+    
+        for(let c of costumGates) {
+            for (let b of c.inBoxes) {
+                updatePower(b, simulation)
+            }
+            let a = analyseOutPut(createInputArray(c), c.array)
+            for (let i = 0; i < c.outBoxes.length; i++) {
+                if(a[i] == 1) {
+                    c.outBoxes[i].hasPower = true
+                }
+                else {
+                    c.outBoxes[i].hasPower = false
+                }
+            }  
         }
 
         for (let w of wires) {
@@ -155,18 +216,15 @@ function updateAllPower(simulation) {
         for(let l of lamps) {
             updatePower(l, simulation)
         }
-}
+    }
     draw()
 }
 
 //Array skrivemåte er binary
 
-let notArray = [[1], [0]]
-let orArray =[[0], [1], [1], [1] ]
-
-function createInputArray(box) {
+function createInputArray(gate) {
     let array = []
-    for(let inbox of box.inBoxes) {
+    for(let inbox of gate.inBoxes) {
         if(inbox.hasPower) {
         array.push(1)
         } else {
@@ -220,33 +278,23 @@ function simulateRun() {
         outputs.push(str) 
         str = ""
     }
+     spawers.push(new costumSpawner((spawers.length+1)*100, 200, "costum", selectedInputs.length, selectedOutputs.length, outputs))
      for (b of selectedInputs) {
         b.defaultPower = false
     }
     selectedInputs = []
     selectedOutputs = []
+    draw();
     return outputs;
 }
 
-let onBoxSpawner = {
-    x: 200, 
-    y: 200
-}
+let spawers = []
 
-let lampSpawner = {
-    x: 300, 
-    y: 200
-}
+spawers.push(new spawner(100, 200, "onBox"))
+spawers.push(new spawner(200, 200, "lamp"))
+spawers.push(new spawner(300, 200, "notGate"))
+spawers.push(new spawner(400, 200, "orGate"))
 
-let notGateSpawner = {
-    x: 400, 
-    y: 200
-}
-
-let orGateSpawner = {
-    x: 500, 
-    y: 200
-}
 
 let currentbox = {
     x: 0,
@@ -262,6 +310,7 @@ let notGates = []
 let orGates = []
 let selectedInputs = []
 let selectedOutputs = []
+let costumGates = []
 draw();
 
 
@@ -269,18 +318,9 @@ function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = "red"
-    //onBox
-    ctx.fillRect(onBoxSpawner.x, onBoxSpawner.y, tileSize, tileSize);
-
-    //light
-    ctx.fillRect(lampSpawner.x, lampSpawner.y, tileSize, tileSize);
-
-    //notGates
-     ctx.fillRect(notGateSpawner.x, notGateSpawner.y, tileSize, tileSize);
-
-     //orGates
-     ctx.fillRect(orGateSpawner.x, orGateSpawner.y, tileSize, tileSize);
-
+    for (s of spawers) {
+        ctx.fillRect(s.x, s.y, tileSize, tileSize);
+    }
 
     ctx.fillStyle = "green"
     ctx.fillRect(currentbox.x, currentbox.y, tileSize, tileSize);
@@ -321,7 +361,17 @@ function draw() {
         ctx.fillRect(o.inBoxes[1].x, o.inBoxes[1].y, tileSize, tileSize);
         ctx.fillStyle = "red";
         ctx.fillRect(o.outBoxes[0].x, o.outBoxes[0].y, tileSize, tileSize);
+    }
 
+    for (let c of costumGates) {
+        ctx.fillStyle = "blue";
+        for(b of c.inBoxes) {
+            ctx.fillRect(b.x, b.y, tileSize, tileSize);
+        }
+        ctx.fillStyle = "red";
+        for(b of c.outBoxes) {
+            ctx.fillRect(b.x, b.y, tileSize, tileSize);
+        }
     }
 
 }
@@ -376,36 +426,19 @@ document.addEventListener('mousedown', (e) => {
         }
     } else {
         //OnBox 
-        if(checkIfClicked(onBoxSpawner.x, onBoxSpawner.y, e)) {
-            isDragging = true
-            draggingItem = 'B'
-            draw()
-        }
-
-        //Lamp
-        if(checkIfClicked(lampSpawner.x, lampSpawner.y, e)) {
-            isDragging = true
-            draggingItem = 'L'
-            draw()
+        for (s of spawers) {
+            if(checkIfClicked(s.x, s.y, e)) {
+                isDragging = true
+                draggingItem = s
+                draw()
+            }
         }
 
         firstSelectedBox = checkAnyBlockClicked(e);
         console.log(firstSelectedBox)
         if (firstSelectedBox !== null) {
             isDragging = true;
-            draggingItem = 'W'
-            draw();
-        }
-
-        if(checkIfClicked(notGateSpawner.x, notGateSpawner.y, e)) {
-            isDragging = true;
-            draggingItem = 'N';
-            draw();
-        }
-
-        if(checkIfClicked(orGateSpawner.x, orGateSpawner.y, e)) {
-            isDragging = true;
-            draggingItem = 'O';
+            draggingItem = 'w';
             draw();
         }
     }
@@ -427,32 +460,36 @@ document.addEventListener('mouseup', (e) => {
 
         isDragging = false
         console.log(draggingItem);
-        switch (draggingItem) {
-            case 'B':
-                onBoxes.push(new onBox(mouseX, mouseY));
-                break;
-            case 'L':
-                lamps.push(new lamp(mouseX, mouseY));
-                break;
-            case 'N':
-                notGates.push(new notGate(mouseX, mouseY))
-                break;
-
-            case 'O':
-                orGates.push(new orGate(mouseX, mouseY))
-                break;
-            
-            case 'W':
-                secondSelectedBox = checkAnyBlockClicked(e);
+        if (draggingItem === 'w') {
+              secondSelectedBox = checkAnyBlockClicked(e);
                 if(secondSelectedBox !== null && secondSelectedBox !== firstSelectedBox) {
                     wires.push(new wire(firstSelectedBox, secondSelectedBox))
                     console.log("WIREE")
                     console.log(wires)
                     console.log(firstSelectedBox)
                     console.log(secondSelectedBox)
-                
                 }
+        } else {
+        switch (draggingItem.name) {
+            case "onBox":
+                onBoxes.push(new onBox(mouseX, mouseY));
                 break;
+            case 'lamp':
+                lamps.push(new lamp(mouseX, mouseY));
+                break;
+            case 'notGate':
+                notGates.push(new notGate(mouseX, mouseY))
+                break;
+
+            case 'orGate':
+                orGates.push(new orGate(mouseX, mouseY))
+                break;
+            
+            case "costum":
+                let spawn = draggingItem
+                console.log(spawn)
+                costumGates.push(new costumGate(mouseX, mouseY, spawn.inPorts, spawn.outPorts, spawn.array, spawn.name))
+            }
         }
         draw()
             
