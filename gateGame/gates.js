@@ -23,7 +23,8 @@ class box {
         this.defaultPower = false
         this.hasPower = this.defaultPower
         boxes.push(this)
-        this.connectedBoxes = []
+        this.connectedWires = []
+        this.parentGate = null
     }
 }
 
@@ -70,6 +71,8 @@ class notGate extends gates {
         this.outBoxes[0].leadPower = true
         this.outBoxes[0].basePower = true
         this.outBoxes[0].defaultPower = true
+        this.inBoxes[0].parentGate = this
+        this.outBoxes[0].parentGate = this
     }
 }
 
@@ -81,20 +84,25 @@ class orGate extends gates {
         this.inBoxes.push(new box(x+tileSize*2, y))
         this.outBoxes.push(new box(x+tileSize, y-tileSize))
         this.outBoxes[0].leadPower = true;
+        this.inBoxes[0].parentGate = this
+        this.inBoxes[1].parentGate = this
+        this.outBoxes[0].parentGate = this
     }
 }
 
 class costumGate extends gates {
     constructor(x, y, inPorts, outPorts, logic, name) {
         super(x, y)
+        this.array = logic
+        this.name = name
         for (let i = 0; i < inPorts; i++) {
             this.inBoxes.push(new box(x+i*2*tileSize, y))
+            this.inBoxes[i].parentGate = this
         }
         for (let i = 0; i < outPorts; i++) {
             this.outBoxes.push(new box(x+i*2*tileSize, y-tileSize))
-        }
-        this.array = logic
-        this.name = name
+            this.outBoxes[0].parentGate = this        }
+        
 
         for (let b = 0; b < this.outBoxes.length; b++) {
             this.outBoxes[b].leadPower = true
@@ -107,14 +115,25 @@ class costumGate extends gates {
 }
  
 class wire {
-    constructor(fromBox, toBox) {
-        if(!fromBox instanceof box || !toBox instanceof box) {
+    constructor(box1, box2) {
+        if(!box1 instanceof box || !box2 instanceof box) {
             throw TypeError("Wire coocked");
         }
-        this.fromBox = fromBox;
-        this.toBox = toBox;
-        fromBox.connectedBoxes.push(toBox);
-        toBox.connectedBoxes.push(fromBox);
+        if(box1.leadPower && box2.leadPower && !(box1 instanceof inputBox || box2 instanceof inputBox)) {
+            throw TypeError("Two ouputs cant be connected")
+        }
+        if(!box1.leadPower && !box2.leadPower) {
+            throw TypeError("Two inputs cant be connected")
+        }
+        if(!box1.leadPower || box1 instanceof inputBox) {
+            this.toBox = box1;
+            this.fromBox = box2;
+        } else {
+            this.fromBox = box1;
+            this.toBox = box2; 
+        }
+        box1.connectedWires.push(this);
+        box2.connectedWires.push(this);
     }
 }
 
@@ -143,9 +162,13 @@ function updatePower(l, simulation) {
     if(!l instanceof box) {
         throw TypeError("box not boxing");
     }
-    for(let c of l.connectedBoxes) {
-        if(c.leadPower && c.hasPower) {
+    for(let c of l.connectedWires) {
+        if(c.fromBox.hasPower) {
             l.hasPower = true
+            return;
+        }
+        if(c.toBox instanceof inputBox && c.toBox.hasPower) {
+            l.hasPower = true;
             return;
         }
     }
@@ -154,23 +177,13 @@ function updatePower(l, simulation) {
     }
 }
 
-
-////function updateWirePower(w) {
-  //      if((w.fromBox.hasPower && w.fromBox.leadPower) || w.toBox.hasPower && w.toBox.leadPower) {
-         //   console.log("StRØm")
-           // w.fromBox.hasPower = true
-       //     w.toBox.hasPower = true
-     //   }
-
-   // }
-
 function updateAllPower(simulation) {
 
     for (let b of boxes) {
         b.hasPower = b.defaultPower;
     }
 
-    for(let i = 0; i < 3; i++) {
+    for(let i = 0; i < 6; i++) {
 
         for (let o of onBoxes) {
             updatePower(o, simulation)
@@ -331,6 +344,7 @@ function draw() {
     ctx.fillStyle = "red"
     for (s of spawers) {
         ctx.fillRect(s.x, s.y, tileSize, tileSize);
+        ctx.fillText(s.name, s.x, s.y - 20)
     }
 
     ctx.fillStyle = "green"
@@ -438,6 +452,18 @@ document.addEventListener('keydown', (e) => {
 
 let deleteBox;
 
+
+function removeWires(b) {
+    for(let c of b.connectedWires) {
+        if (c.fromBox !== b) {
+            c.fromBox.connectedWires = c.fromBox.connectedWires.filter(obj => obj !== c);
+        } else if (c.toBox !== box) {
+            c.toBox.connectedWires = c.toBox.connectedWires.filter(obj => obj !== c);
+        } else {throw TypeError("wtf hvordan skjedde dette")}
+            wires = wires.filter(obj => obj !== c);
+    }
+}
+
 document.addEventListener('mousedown', (e) => {
     mouseX = e.offsetX
     mouseY = e.offsetY
@@ -472,16 +498,30 @@ document.addEventListener('mousedown', (e) => {
         }
         deleteBox = checkAnyBlockClicked(e, false)
         if (deleteBox !== null) {
-            if (deleteBox instanceof onBox) {
-                for(let b of deleteBox.connectedBoxes) {
-                    if (b.connectedBoxes === deleteBox) {
-                        //emm venter med mer kode 
-
-                    }
-                }
+            if (deleteBox instanceof onBox || deleteBox instanceof lamp || deleteBox instanceof inputBox) {
+                removeWires(deleteBox)
                 onBoxes = onBoxes.filter(obj => obj !== deleteBox);
+                lamps = lamps.filter(obj => obj !== deleteBox);
+                inputBoxes = inputBoxes.filter(obj => obj !== deleteBox);
+                boxes = boxes.filter(obj => obj !== deleteBox);
                 console.log("clear")
+
+            } if (deleteBox.parentGate !== null) {
+                let g = deleteBox.parentGate;
+                console.log(g)
+                for(let i of g.inBoxes) {
+                    removeWires(i)
+                    boxes = boxes.filter(obj => obj !== i);
+                }
+                for(let o of g.outBoxes) {
+                    removeWires(o)
+                    boxes = boxes.filter(obj => obj !== o);
+                }
+            costumGates = costumGates.filter(obj => obj !== g);
+            orGates = orGates.filter(obj => obj !== g);
+            notGates = notGates.filter(obj => obj !== g);
             }
+            draw()
         }
     }
 });
